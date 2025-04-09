@@ -68,8 +68,6 @@ The goal is to demonstrate how logs from various applications or systems can be 
 
 ### 🔹 Step 2: Install Loki (Binary)
 
-- Installation of Loki
-
 ```bash
 
 # Download latest Loki binary
@@ -242,12 +240,24 @@ sudo systemctl status promtail
 
 ### 🔹 Step 4: Connect Loki to Grafana
 
-- Open Grafana in browser: http://localhost:3000  
+- Open Grafana in browser: <http://public-ip:3000>
+
 - Login with `admin / admin`
+ 
+  ![image](https://github.com/user-attachments/assets/a8b2a2ac-2013-4214-8054-f7b83aa769a3)
+
+  
 - Go to **Settings → Data Sources → Add data source**
 - Choose **Loki**
+  ![image](https://github.com/user-attachments/assets/3e6bc1fd-0991-4642-9736-b6321a10f657)
+
 - URL: `http://localhost:3100`
+
+![image](https://github.com/user-attachments/assets/d6660cb5-c9a7-460b-8f28-a3285c3d1e55)
+
 - Click **Save & Test**
+
+![image](https://github.com/user-attachments/assets/472264c7-dd62-46b1-8e88-e13cbfddee96)
 
 ---
 
@@ -255,21 +265,19 @@ sudo systemctl status promtail
 
 - Go to the **Explore** tab in Grafana.
 - Use the query: `{job="varlogs"}` to see logs.
-- Create dashboards or set up alerts as needed.
+
+![image](https://github.com/user-attachments/assets/cca9e8b5-f3e2-44e0-a482-fcb77901d217)
+
+![image](https://github.com/user-attachments/assets/8ec37e0d-ab45-419c-a639-bbbcabde54be)
+
 
 ---
 
 ##  Conclusion
 
-This PoC demonstrates how you can easily implement a log monitoring solution using Grafana, Loki, and Promtail.
+This PoC serves as a great starting point for exploring Grafana, Loki, and Promtail. It helps you understand the fundamentals of log monitoring, which can be extended and hardened for production environments as needed.
 
-It's a simple yet powerful stack that works well for small-to-medium setups or development environments.
 
-> ⚠️ **Note:** This setup is not optimized for large-scale or high-availability deployments. For production use, consider:
-> - Log rotation and compression
-> - Centralized configuration management
-> - Scalable storage backends
-> - Horizontal scaling with Promtail and Loki
 
 ---
 
