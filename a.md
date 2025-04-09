@@ -1,32 +1,32 @@
-# 🚀 Logs Monitoring | PoC using Grafana, Promtail, and Loki
+#  Logs Monitoring | PoC using Grafana, Promtail, and Loki
 
 | Author       | Created On  | Version | Last Updated By | Internal Reviewer | Reviewer L0    | Reviewer L1     | Reviewer L2     |
 |--------------|-------------|---------|------------------|-------------------|----------------|------------------|------------------|
 | Mohit Kumar  | 09-Apr-2025 | v1.0    | Mohit Kumar      | Harshit Singh     | Akshit Kapil   | Shashi Sharma   | Mahesh Kumar    |
 
-## 📑 Table of Contents
+##  Table of Contents
 
-- [Introduction](#-introduction)  
-- [Tools Used](#-tools-used)  
-- [How It Works](#️-how-it-works)  
-- [Step-by-Step Installation Guide](#-step-by-step-installation-guide)  
-- [Conclusion](#-conclusion)  
-- [Contact Information](#-contact-information)  
-- [References](#-references)
+- [Introduction](#introduction)  
+- [Tools Used](#tools-used)
+- [Architecture Diagram](#architecture-diagram)
+- [How It Works](#how-it-works)
+- [Step-by-Step Installation Guide](#step-by-step-installation-guide)  
+- [Conclusion](#conclusion)  
+- [Contact Information](#contact-information)  
+- [References](-references)
 
 ---
 
-## 🧭 Introduction
+##  Introduction
 
 This document provides a proof of concept (PoC) for logs monitoring using open-source tools: Grafana, Loki, and Promtail.
 
 The goal is to demonstrate how logs from various applications or systems can be collected, aggregated, and visualized in real time with minimal setup.
 
-This is intended purely as a PoC setup to show that it works — not optimized for production, but enough to help you get started quickly.
 
 ---
 
-## 🛠️ Tools Used
+##  Tools Used
 
 | Tool      | Role                      | Description                                                       |
 |-----------|---------------------------|-------------------------------------------------------------------|
@@ -35,49 +35,42 @@ This is intended purely as a PoC setup to show that it works — not optimized f
 | Promtail  | Log Collector & Shipper   | Runs on servers, collects log files, and ships them to Loki.     |
 
 ---
+##  Architecture Diagram
 
-## ⚙️ How It Works
+![image](https://github.com/user-attachments/assets/270797f8-84ee-4f03-8b7e-22a87cf7121d)
 
-- Promtail collects logs from system or application log files.
-- It sends those logs to Loki, which stores and indexes them.
-- Grafana is connected to Loki and visualizes logs through dashboards or search queries.
+## How It Works
+
+- Promtail reads log files from your system (like /var/log/syslog, /var/log/auth.log, etc.). It keeps track of which parts of the log files it has already read to avoid duplicates.
+
+- It then sends those logs to Loki, which stores and organizes them using labels (like job name or file path) so you can search logs easily later.
+
+- Loki saves the log content and also keeps a small index of labels to make searching fast without using too much storage.
+
+- Grafana is connected to Loki and lets you view and search the logs using simple queries. You can build dashboards, filter logs by time or content, and even create alerts.
 
 ---
 
-## 🏗️ Step-by-Step Installation Guide
-
-> All installations are done on **Ubuntu Linux (20.04+)**. Adjust commands as necessary for other distributions.
+## Step-by-Step Installation Guide
 
 ### 🔹 Step 1: Install Grafana
 
-```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y gnupg2 curl software-properties-common
+- To Setup Grafana on your system, please follow the link below for the Grafana Setup Guide. :-[ Grafana Setup  Guide](https://github.com/snaatak-Zero-Downtime-Crew/Documentation/blob/Nikita-SCRUM-104/Common/Software/Grafana/README.md)
 
-# Add Grafana GPG key and repo
-curl -fsSL https://packages.grafana.com/gpg.key | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/grafana.gpg
-sudo add-apt-repository "deb https://packages.grafana.com/oss/deb stable main"
+📍 Access Grafana at: http://<server_IP>:3000  
 
-# Install Grafana
-sudo apt update && sudo apt install -y grafana
+   (Default login: `admin` / `admin`)
 
-# Start and enable Grafana service
-sudo systemctl start grafana-server
-sudo systemctl enable grafana-server
+![image](https://github.com/user-attachments/assets/e352bcf3-2f82-4c63-9bd7-14db8151e3c4)
 
-# Allow Grafana port
-sudo ufw allow 3000/tcp
-```
-
-📍 Access Grafana at: http://localhost:3000  
-(Default login: `admin` / `admin`)
 
 ---
 
 ### 🔹 Step 2: Install Loki (Binary)
 
+- Installation of Loki
+
 ```bash
-sudo apt install -y unzip
 
 # Download latest Loki binary
 curl -s https://api.github.com/repos/grafana/loki/releases/latest \
@@ -86,24 +79,71 @@ curl -s https://api.github.com/repos/grafana/loki/releases/latest \
 | cut -d '"' -f 4 \
 | wget -i -
 
-# Unzip and move binary
+# Unzip the move binary file to /usr/local/bin
+sudo apt install unzip
 unzip loki-linux-amd64.zip
 sudo mv loki-linux-amd64 /usr/local/bin/loki
-chmod +x /usr/local/bin/loki
 
 # Confirm version
 loki --version
 ```
 
-Create Loki configuration:
+---
+- Create Loki configuration: 
 
 ```bash
+# Navigate to the desired directory
+cd /usr/local/bin
+
+# Create necessary Loki data directory
 sudo mkdir -p /data/loki
-sudo wget -O /etc/loki-local-config.yaml https://raw.githubusercontent.com/grafana/loki/main/cmd/loki/loki-local-config.yaml
-sudo sed -i 's/auth_enabled: true/auth_enabled: false/' /etc/loki-local-config.yaml
+
+# Create the Loki configuration file
+sudo nano /etc/loki-config.yaml
 ```
 
-Create a systemd service:
+- Paste the following configuration into the /etc/loki-config.yaml file:
+```yaml
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /data/loki
+  storage:
+    filesystem:
+      chunks_directory: /data/loki/chunks
+      rules_directory: /data/loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+query_range:
+  results_cache:
+    cache:
+      embedded_cache:
+        enabled: true
+        max_size_mb: 100
+
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+ruler:
+  alertmanager_url: http://localhost:9093
+```
+___
+- Create a systemd service:
 
 ```bash
 sudo tee /etc/systemd/system/loki.service <<EOF
@@ -112,17 +152,20 @@ Description=Loki Log Aggregation
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/loki -config.file /etc/loki-local-config.yaml
+ExecStart=/usr/local/bin/loki -config.file /etc/loki-config.yaml
 Restart=always
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
+#  Reload enalbe and start the Promtail service
 sudo systemctl daemon-reload
-sudo systemctl start loki
 sudo systemctl enable loki
+sudo systemctl restart loki
+sudo systemctl status loki
 ```
+![image](https://github.com/user-attachments/assets/2c439d25-abdc-4643-8d92-b5249c0097a8)
 
 ---
 
@@ -136,13 +179,20 @@ curl -s https://api.github.com/repos/grafana/loki/releases/latest \
 | cut -d '"' -f 4 \
 | wget -i -
 
+# Once the file is downloaded extract it to /usr/local/bin
 unzip promtail-linux-amd64.zip
 sudo mv promtail-linux-amd64 /usr/local/bin/promtail
 chmod +x /usr/local/bin/promtail
 ```
 
-Create config file `/etc/promtail-config.yaml`:
+ Create a YAML configuration file for Promtail in the /usr/local/bin directory:
+ 
+ ```bash
+cd /usr/local/bin
+sudo nano /etc/promtail-config.yaml
+```
 
+ Add the following content to the file :- 
 ```yaml
 server:
   http_listen_port: 9080
@@ -164,7 +214,7 @@ scrape_configs:
           __path__: /var/log/*.log
 ```
 
-Create a systemd service:
+Create a systemd service: 
 
 ```bash
 sudo tee /etc/systemd/system/promtail.service <<EOF
@@ -180,10 +230,13 @@ Restart=always
 WantedBy=multi-user.target
 EOF
 
+#  Reload enalbe and start the Promtail service
 sudo systemctl daemon-reload
 sudo systemctl start promtail
 sudo systemctl enable promtail
+sudo systemctl status promtail
 ```
+![image](https://github.com/user-attachments/assets/f60f825e-6058-4bfc-b3e4-8ea55a86c073)
 
 ---
 
@@ -206,7 +259,7 @@ sudo systemctl enable promtail
 
 ---
 
-## ✅ Conclusion
+##  Conclusion
 
 This PoC demonstrates how you can easily implement a log monitoring solution using Grafana, Loki, and Promtail.
 
@@ -220,7 +273,7 @@ It's a simple yet powerful stack that works well for small-to-medium setups or d
 
 ---
 
-## 📬 Contact Information
+## Contact Information
 
 | Name        | Email Address                  |
 |-------------|-------------------------------|
@@ -228,7 +281,7 @@ It's a simple yet powerful stack that works well for small-to-medium setups or d
 
 ---
 
-## 🔗 References
+##  References
 
 | Resource              | Description                            |
 |-----------------------|----------------------------------------|
